@@ -1,0 +1,105 @@
+1. Setting database(create db : idstack_multiauth) relation in .env file 
+2. run php artisan serve
+php artisan make:auth
+
+config/auth.php
+    cek array 'guards' 
+    'guards' => [
+        .....
+
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
+
+        'api-admin' => [
+            'driver' => 'token',
+            'provider' => 'admins',
+        ],
+    ],
+
+
+    cek array providers
+    .....
+
+    'admins' => [
+            'driver' => 'eloquent',
+            'model' => App\Admin::class,
+        ],
+
+    cek array passwords
+    .....
+
+    'admins' => [
+            'provider' => 'admins',
+            'table' => 'password_resets',
+            'expire' => 15, //dalam menit
+        ],
+
+3. php artisan make:controller AdminController
+4. copy folder Auth pada Http menjadi AuthAdmin
+5. copy folder Auth pada View menjadi authAdmin
+    konfigurasi untuk action route ke admin.login.submit pada form
+
+6. Konfigurasi pada file Exception/Handler.php
+
+/* tambahkan fungsi untuk response ke user sebagai feedback ketika belum login makan akan di redirect login form */
+protected function unauthenticated($request, AuthenticationException $exception)
+    {
+        return $request->expectsJson()
+                    ? response()->json(['message' => $exception->getMessage()], 401)
+                    : redirect()->guest($exception->redirectTo() ?? route('login'));
+        
+        if($request->expectsJson()){
+            return response()->json(['error' => 'Unauthenticated.'],401);
+        }
+
+        $guard = array_get($exception->guards(),0);
+        switch($guard){
+            case 'admin':
+                $login = 'admin.login';
+                break;
+            default:
+                $login = 'login';
+                break;
+        }   
+        return redirect()->guest(route($login));
+    }
+
+7. membuat credential untuk admin. Run pada cmd :
+    php artisan tinker
+
+>>> $admin = new App\Admin();
+enter
+>>> $admin->name = 'Administrator'
+enter
+>>> $admin->email = 'admin@mail.com'
+enter
+>>> $admin->password = bcrypt('qweqwe')
+enter
+>>> $admin->save();
+enter
+
+8. Membuat components/who.blade.php untuk mengetahui status user atau admin yg sedang login,
+@if(Auth::guard('web')->check())
+    <p class="text-success">
+        You are Logged In as a <strong>User</strong>
+    </p>
+    @else
+    <p class="text-danger">
+        You are Logged Out as a <strong>User</strong>
+    </p>
+@endif
+
+@if(Auth::guard('admin')->check())
+    <p class="text-success">
+        You are Logged In as a <strong>Admin</strong>
+    </p>
+    @else
+    <p class="text-danger">
+        You are Logged Out as a <strong>Admin</strong>
+    </p>
+@endif
+
+9. Membuat function logout di dalam controller Auth maupun AuthAdmin 
+10. Membuat forgot password untuk melakukan reset password dengan email untuk admin
